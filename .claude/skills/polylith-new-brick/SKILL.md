@@ -1,13 +1,10 @@
+---
+description: "Use when creating new Polylith components, bases, or projects in the workspace."
+---
+
 # Polylith New Brick
 
 Create new Polylith bricks (components, bases) and projects following workspace conventions.
-
-## Trigger
-
-Use this skill when the user asks to:
-- Create a new component or base
-- Add a new project to the workspace
-- Set up a new Polylith brick
 
 ## Prerequisites
 
@@ -16,6 +13,8 @@ Before creating any brick:
 2. Confirm the **brick name** (e.g., `logging`, `data_processor`)
 
 The namespace is defined in `workspace.toml` and used automatically by the CLI.
+
+**Note**: Core Rules §1 defines the brick creation policy. This skill provides step-by-step procedures.
 
 ## Procedure: Creating Components or Bases
 
@@ -68,24 +67,12 @@ Edit `projects/{project_name}/pyproject.toml` following the template in [pyproje
 
 Key requirements:
 - `[build-system]` at the top
-- No `readme` field (workspace root only)
-- No `[dependency-groups]` (inherited from workspace)
-- No `[tool.ruff]` or `[tool.pyright]` (workspace-wide config)
-- Dependencies must be a **subset** of workspace root
 - `[tool.polylith.bricks]` uses relative paths (`../../bases/...`, `../../components/...`)
+- Follow project pyproject.toml restrictions from Core Rules §4
 
 ### Step 3: Add Project-Specific Dependencies
 
-Only add dependencies that are already in workspace root:
-```toml
-[project]
-dependencies = [
-    # Must be subset of workspace root dependencies
-    "google-cloud-bigquery>=3.30.0",
-]
-```
-
-If new dependency needed, add to workspace root first with `uv add`.
+Add only dependencies already in workspace root (subset rule — see Core Rules §4).
 
 ### Step 4: Sync and Verify
 
@@ -101,11 +88,6 @@ See [directory-structure.md](references/directory-structure.md) for complete exa
 ## pyproject.toml Templates
 
 See [pyproject-templates.md](references/pyproject-templates.md) for workspace and project templates.
-
-## Namespace Package Rule
-
-- **Namespace level** (`{namespace}/`): NO `__init__.py` - Python auto-treats as namespace package
-- **Brick level** (`{namespace}/logging/`): HAS `__init__.py` - created by Polylith CLI
 
 ## Code Sharing Principles
 
@@ -124,25 +106,6 @@ See [pyproject-templates.md](references/pyproject-templates.md) for workspace an
 - Minimize implicit dependencies between components
 - Use explicit interfaces (function signatures, type hints)
 
-## Quick Start Checklist
-
-New component or base:
-1. `uv run poly create component --name {name}` or `uv run poly create base --name {name}`
-2. Add dependencies to workspace root if needed: `uv add {package}`
-3. Implement in `core.py`
-4. Write tests in `test/{brick_type}s/{namespace}/{name}/test_core.py`
-5. Run `uv run pytest` to verify
-
-New project:
-1. `uv run poly create project --name {name}`
-2. Edit `projects/{name}/pyproject.toml` (subset deps, relative brick paths)
-3. Add deployment files (`Dockerfile`, `copy.sh`, or `main.py`)
-4. Run `uv sync` to verify
-
 ## Common Mistakes to Avoid
 
-- Adding `__init__.py` at namespace level
-- Adding dependencies to project that aren't in workspace root
-- Including `readme` field in project pyproject.toml
-- Duplicating `[dependency-groups]` in project files
 - Using absolute paths in project's `[tool.polylith.bricks]`

@@ -1,14 +1,14 @@
+---
+description: "Use when adding, removing, updating, or troubleshooting Python dependencies with uv."
+---
+
 # Dependency Management
 
 Manage Python dependencies with uv following workspace conventions.
 
-## Trigger
+## Context
 
-Use this skill when the user asks to:
-- Add or remove a dependency
-- Update dependencies
-- Sync or install dependencies
-- Fix dependency issues
+This skill implements the dependency management procedures for Core Rules §4. See Core Rules for the CRITICAL subset rule and workspace vs project configuration requirements.
 
 ## Quick Reference
 
@@ -21,6 +21,8 @@ Use this skill when the user asks to:
 | Update specific | `uv lock --upgrade-package <package>` |
 | Sync (local dev) | `uv sync` |
 | Sync (CI/CD) | `uv sync --frozen` |
+| Get package version from lock | `uv tree --package <package> --depth 0 --frozen` |
+| Get/set package version | `uv version --package <package> [version]` |
 
 ## Procedure: Adding Dependencies
 
@@ -108,9 +110,7 @@ uv sync
 
 ## Critical Rules
 
-### Subset Rule
-
-Project dependencies MUST be a subset of workspace root:
+### Subset Rule (Visual Reference)
 
 ```
 Workspace root: [A, B, C, D]
@@ -118,8 +118,6 @@ Project 1:      [A, B]      ✅ Valid subset
 Project 2:      [B, C, D]   ✅ Valid subset
 Project 3:      [A, E]      ❌ E not in workspace root!
 ```
-
-If project needs new dependency → add to workspace root FIRST.
 
 ### Version Constraints
 
@@ -132,12 +130,6 @@ Always use `>=` with tested version:
 "google-cloud-bigquery"        # No version
 "google-cloud-bigquery>3.0"    # Untested minimum
 ```
-
-### Lock File Rules
-
-- Always commit `uv.lock`
-- Use `--frozen` in CI/CD
-- Never manually edit `uv.lock`
 
 ## Standard Dependency Groups
 

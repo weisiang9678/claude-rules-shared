@@ -1,42 +1,17 @@
+---
+description: "Use when writing commit messages, creating releases, or understanding version bumps with conventional commits."
+---
+
 # Semantic Release
 
 Manage automated versioning and releases using conventional commits.
 
-## Trigger
-
-Use this skill when the user asks to:
-- Write commit messages
-- Create a release
-- Understand version bumps
-- Fix commit message format
-
 ## Commit Message Format
 
-```
-<type>(<scope>): <subject>
+See Core Rules §7 for format, types, version bumps, and subject rules.
 
-[optional body]
-
-[optional footer(s)]
-```
-
-### Type → Version Bump
-
-| Type | Version Bump | Example |
-|------|--------------|---------|
-| `feat` | MINOR (1.0.0 → 1.1.0) | `feat(api): add user endpoint` |
-| `fix` | PATCH (1.0.0 → 1.0.1) | `fix(auth): correct token expiry` |
-| `perf` | PATCH (1.0.0 → 1.0.1) | `perf(query): optimize lookup` |
-| `!` or `BREAKING CHANGE:` | MAJOR (1.0.0 → 2.0.0) | `feat!: remove v1 api` |
-| `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore` | None | `docs: update readme` |
-
-### Subject Rules
-
-- Use imperative mood: "add" not "added" or "adds"
-- Don't capitalize first letter: "add feature" not "Add feature"
-- No period at the end
-- Maximum 72 characters
-- Be descriptive, not vague
+Additional type for this project:
+- `perf` → PATCH (1.0.0 → 1.0.1)
 
 ## Examples
 
@@ -74,27 +49,40 @@ ci: add type checking workflow
 chore: update dependencies
 ```
 
-## Branch Naming
-
-```
-<type>/<ticket-id>-<brief-description>
-```
-
-Examples:
-```
-feat/DA-687-migrate-to-uv
-fix/DA-701-sentry-integration
-docs/DA-688-update-readme
-```
-
 ## How Releases Work
 
 1. Commits pushed to `main` branch
 2. Semantic release analyzes commit messages
 3. Version bump determined from commit types
-4. CHANGELOG.md generated
-5. Git tag created (e.g., v1.2.3)
-6. GitHub release published
+4. **Workspace members updated** with `uv version --package`
+5. **Root version updated** by `semantic-release version`
+6. CHANGELOG.md generated
+7. Git tag created (e.g., v1.2.3)
+8. GitHub release published
+
+### Workspace Version Management
+
+This project uses a **uv workspace** with multiple projects in `projects/*`. Version updates happen in two stages within the Release workflow:
+
+**Stage 1 — Sync workspace member versions:**
+```bash
+NEW_VERSION=$(semantic-release --noop version --print)
+for project in projects/*; do
+  uv version --package $(basename "$project") "$NEW_VERSION" --frozen
+done
+```
+
+`semantic-release --noop version --print` determines the next version from commit history without making changes. `uv version --package` stamps that version into each project's `pyproject.toml`.
+
+**Stage 2 — Bump root, commit, tag, and publish:**
+```bash
+semantic-release version  # Updates root pyproject.toml, commits all changes, creates tag
+semantic-release publish  # Creates GitHub release
+```
+
+`semantic-release version` stages and commits **all** modified `pyproject.toml` files (root + projects), so the version sync is atomic in a single release commit.
+
+**Ordering is critical:** Stage 1 must run before Stage 2. See the Release workflow in the `github-actions-cicd` skill for the complete integration.
 
 ## Configuration
 
@@ -107,17 +95,6 @@ version_toml = ["pyproject.toml:project.version"]
 branch = "main"
 upload_to_pypi = false
 upload_to_release = true
-```
-
-## Manual Release (Rare)
-
-```bash
-# Dry run
-semantic-release --noop version --print
-
-# Actual release
-semantic-release version
-semantic-release publish
 ```
 
 ## Pull Request Conventions
@@ -142,22 +119,6 @@ Brief description of what this PR does.
 
 ## Related Issues
 Closes #123
-```
-
-## Helpful Git Commands
-
-```bash
-# View commit history
-git log --oneline --decorate
-
-# View commits since last tag
-git log $(git describe --tags --abbrev=0)..HEAD --oneline
-
-# Amend last commit message
-git commit --amend
-
-# Interactive rebase to fix commit messages
-git rebase -i HEAD~3
 ```
 
 ## Common Mistakes

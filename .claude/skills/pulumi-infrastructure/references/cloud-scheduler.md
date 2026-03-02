@@ -1,5 +1,9 @@
 # Cloud Scheduler to Cloud Run Jobs
 
+## Prerequisites
+
+Cloud Scheduler requires permission to impersonate the service account when invoking Cloud Run Jobs via OAuth. Grant the `serviceAccountTokenCreator` role to the Cloud Scheduler service agent.
+
 ## Stack Configuration
 
 ```yaml
@@ -50,6 +54,28 @@ for scheduler_config in scheduler_configs:
 **Why copy() + pop():**
 - `target_job` is custom - used to build URL, not a Pulumi arg
 - After popping, remaining keys spread directly to resource
+
+## Service Account Token Creator IAM
+
+Cloud Scheduler's service agent needs permission to generate OAuth tokens for your service account. Add this IAM binding once per project (not per scheduler job):
+
+```python
+GCP_PROJECT_NUMBER = os.environ["GCP_PROJECT_NUMBER"]
+
+# Grant Cloud Scheduler service agent permission to impersonate service account
+gcp.serviceaccount.IAMMember(
+    resource_name=make_resource_name("scheduler-sa-token-creator", project_name),
+    service_account_id=service_accounts[project_name].name,
+    role="roles/iam.serviceAccountTokenCreator",
+    member=f"serviceAccount:service-{GCP_PROJECT_NUMBER}@gcp-sa-cloudscheduler.iam.gserviceaccount.com",
+    opts=pulumi.ResourceOptions(depends_on=[service_accounts[project_name]]),
+)
+```
+
+**Important:**
+- `GCP_PROJECT_NUMBER` is the numeric project ID (not project name)
+- This grants the Cloud Scheduler service agent (not your service account) the ability to create tokens
+- Without this, scheduler jobs will fail with "Permission denied" errors
 
 ## Common Schedules
 

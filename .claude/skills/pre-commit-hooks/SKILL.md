@@ -1,14 +1,12 @@
+---
+description: "Use when setting up, configuring, or troubleshooting pre-commit hooks for code quality enforcement."
+---
+
 # Pre-commit Hooks
 
 Set up and manage pre-commit hooks for code quality enforcement.
 
-## Trigger
-
-Use this skill when the user asks to:
-- Set up pre-commit hooks
-- Configure code quality hooks
-- Fix pre-commit hook issues
-- Add commit message validation
+**Note**: Core Rules §7 mandates that pre-commit hooks must be installed before committing. This skill provides setup procedures.
 
 ## Standard Configuration
 
@@ -30,6 +28,16 @@ repos:
       - id: ruff-linter
         name: ruff-linter
         entry: "uv run ruff check --fix bases components projects"
+        language: system
+        always_run: true
+        types: [python]
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: "uv run pyright"
+        pass_filenames: false
         language: system
         always_run: true
         types: [python]
@@ -75,6 +83,7 @@ uv run pre-commit run --all-files
 |------|---------|----------|
 | **ruff-format** | Format Python code | Auto-fixes formatting issues |
 | **ruff-linter** | Lint and fix code | Auto-fixes linting issues |
+| **pyright** | Static type checking | Validates type annotations and catches type errors |
 | **pytest** | Run test suite | Ensures tests pass before commit |
 
 ## Handling Hook Failures
@@ -88,6 +97,25 @@ git add -u
 git commit -m "your commit message"
 ```
 
+### When type checking fails
+
+Fix the type errors reported by pyright:
+
+```bash
+# Run pyright to see detailed errors
+uv run pyright
+
+# Fix type issues, then commit
+git add -u
+git commit -m "your commit message"
+```
+
+Common fixes:
+- Add missing type hints to function signatures
+- Use generic TypeVars for functions that preserve types
+- Convert Pydantic dataclasses to BaseModel for validation schemas
+- Use proper type narrowing with isinstance checks
+
 ### When tests fail
 
 Fix the failing tests, then commit again:
@@ -99,12 +127,6 @@ uv run pytest -v
 # Fix issues, then commit
 git add -u
 git commit -m "your commit message"
-```
-
-### Temporarily skip hooks (not recommended)
-
-```bash
-git commit --no-verify -m "message"
 ```
 
 ## Optional: Commit Message Validation
@@ -130,6 +152,10 @@ uv run pre-commit install --hook-type commit-msg
 ```bash
 # Run specific hook
 uv run pre-commit run ruff-format --all-files
+uv run pre-commit run pyright --all-files
+
+# Run individual tools directly
+uv run pyright bases/tp_data_pipeline/confluence/core.py
 
 # Update hook versions
 uv run pre-commit autoupdate
@@ -138,22 +164,3 @@ uv run pre-commit autoupdate
 uv run pre-commit uninstall
 ```
 
-## Troubleshooting
-
-### "pre-commit: command not found"
-
-Ensure you've synced dependencies:
-```bash
-uv sync
-```
-
-### Hooks not running on commit
-
-Reinstall the hooks:
-```bash
-uv run pre-commit install
-```
-
-### Hook runs but misses files
-
-Check the `entry` paths include all relevant directories (bases, components, projects).
