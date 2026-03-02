@@ -8,13 +8,16 @@ input:projects:
     bigquery_dataset:
       dataset_id: bronze_my_project
       location: asia-southeast1
+      delete_contents_on_destroy: true    # sandbox only; false in production
     bigquery_tables:
       - table_id: inventory_movement
         dataset_id: bronze_my_project
         schema_file: bigquery/bronze_my_project/inventory_movement.json
+        deletion_protection: false         # sandbox only; true in production
       - table_id: sku_location
         dataset_id: bronze_my_project
         schema_file: bigquery/bronze_my_project/sku_location.json
+        deletion_protection: false
 ```
 
 ## Python Implementation
@@ -94,6 +97,15 @@ Create schema files at `infrastructure/pulumi/bigquery/{dataset}/{table}.json`:
   }
 ]
 ```
+
+## Deletion Safety Settings
+
+| Resource | Setting | Sandbox | Production |
+|----------|---------|---------|------------|
+| Dataset | `delete_contents_on_destroy` | `true` — allows Pulumi to drop non-empty datasets | `false` — Pulumi refuses to delete datasets with tables |
+| Table | `deletion_protection` | `false` — allows Pulumi to drop the table | `true` — Pulumi refuses to delete the table |
+
+These settings are declared in the stack YAML and pass through to the resource constructor automatically via `**ds_cfg` / `**table` dict spread — no code change is needed when adding or modifying them.
 
 ## Directory Structure
 
