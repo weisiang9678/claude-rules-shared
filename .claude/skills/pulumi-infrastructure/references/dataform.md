@@ -209,7 +209,8 @@ This catches YAML typos at `pulumi preview` time instead of producing cryptic ru
 
 | Setting | Sandbox | Production |
 |---------|---------|------------|
-| `deletion_policy` | `FORCE` — cascade-deletes nested resources | `DELETE` — fails if nested resources exist |
+| Repository `deletion_policy` | `FORCE` — cascade-deletes nested resources | `DELETE` — fails if nested resources exist |
+| Dataset `delete_contents_on_destroy` | `false` — refuses to delete non-empty datasets | `false` — same protection |
 
 Set `deletion_policy` in the stack file, not hardcoded in Python. The code reads it with a safe default:
 

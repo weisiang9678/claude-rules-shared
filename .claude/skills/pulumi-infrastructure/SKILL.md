@@ -204,11 +204,11 @@ Configure these in the stack file per environment — never hardcode in Python:
 
 | Resource | Setting | Sandbox | Production |
 |----------|---------|---------|------------|
-| BigQuery Dataset | `delete_contents_on_destroy` | `true` | `false` |
+| BigQuery Dataset | `delete_contents_on_destroy` | `false` | `false` |
 | BigQuery Table | `deletion_protection` | `false` | `true` |
 | Dataform Repository | `deletion_policy` | `FORCE` | `DELETE` |
 
-Sandbox values allow fast teardown during development. Production values protect against accidental data loss.
+Both environments protect non-empty datasets from accidental deletion. Sandbox relaxes table deletion protection and Dataform cascade-delete for faster iteration.
 
 ## Optional Resource Patterns
 
