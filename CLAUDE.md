@@ -1,15 +1,20 @@
 # Project Context
 
-This is a Python project using Polylith architecture.
+Python monorepo using Polylith architecture. See Core Rules for concepts and conventions.
 
 ## Rules & Skills
 
-This workspace uses a **Rules + Skills** structure to minimize context usage:
+- **Rules** (`.claude/rules/00-core.md`) — Always-loaded conventions
+- **Skills** (`.claude/skills/`) — On-demand procedures, auto-discovered via YAML frontmatter
 
-- **Rules** (`.claude/rules/00-core.md`) — Always-loaded universal conventions
-- **Skills** (`.claude/skills/`) — On-demand procedures loaded when needed
+### Workflow Chain
 
-### Core Rules (Always Loaded)
+```
+/design
+  → approved plan saved to plans/YYYY-MM-DD-<topic>.md
+    → /implement
+      → phase-scoped verification (verification-before-completion) at each boundary
+```
 
 The [00-core.md](.claude/rules/00-core.md) file contains essential conventions that apply to all tasks:
 - Polylith architecture concepts

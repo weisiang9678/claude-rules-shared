@@ -34,6 +34,17 @@ workspace-root/
 - **Namespace level** (`{namespace}/`): NO `__init__.py` — Python auto-treats as namespace package
 - **Brick level** (`{namespace}/logging/`): HAS `__init__.py` — created by Polylith CLI
 
+### Brick Creation Rule
+
+Bricks MUST be created via the Polylith CLI — never manually:
+
+```bash
+uv run poly create component --name {brick_name}
+uv run poly create base --name {brick_name}
+```
+
+For step-by-step procedures, project configuration, and code sharing principles, load the `polylith-new-brick` skill.
+
 ---
 
 ## 2. Tool Versions
@@ -44,73 +55,13 @@ workspace-root/
 | uv | 0.7.8 | CI/CD workflows, Dockerfiles |
 | Build backend | hatchling + hatch-polylith-bricks | `[build-system]` |
 
+These versions are intentionally pinned. Do not upgrade unless explicitly requested.
+
 ---
 
 ## 3. Python Code Standards
 
-### Quality Tools
-
-- **PEP 8** compliance enforced via `ruff` (line length: 88)
-- **Type hints** required on all functions, methods, class attributes
-- **Docstrings** in Google style for all public APIs
-- **Type checking** via `pyright` (standard mode)
-
-### Google Style Docstrings
-
-```python
-def fetch_data(url: str, timeout: int = 30) -> dict[str, Any]:
-    """Fetch data from the specified URL.
-
-    Args:
-        url: The endpoint URL to fetch from.
-        timeout: Request timeout in seconds.
-
-    Returns:
-        Parsed JSON response as dictionary.
-
-    Raises:
-        ConnectionError: If the request fails.
-    """
-```
-
-### Code Formatting
-
-| Rule | Standard |
-|------|----------|
-| Indentation | 4 spaces (never tabs) |
-| Line length | 88 characters max |
-| Blank lines | 2 between top-level definitions, 1 between methods |
-| Whitespace | Space around operators (`=`, `+`), after commas, none inside brackets |
-
-**Line wrapping**: Break after opening parenthesis or before binary operators.
-
-### Naming Conventions
-
-| Element | Style | Example |
-|---------|-------|---------|
-| Modules | `lowercase_snake_case` | `api_client.py` |
-| Functions/Variables | `lowercase_snake_case` | `fetch_data`, `user_count` |
-| Classes | `CamelCase` | `DataProcessor` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES` |
-| Private | `_leading_underscore` | `_internal_helper` |
-
-### Import Order
-
-Three groups separated by blank lines:
-1. Standard library
-2. Third-party
-3. Local (from workspace)
-
-### Structured Logging
-
-```python
-logging.info(msg={"event": "Past-tense verb + object", "payload": {...}})
-logging.error(msg={"event": str(e), "payload": {"traceback": traceback.format_exc()}})
-```
-
-- **event**: Past tense ("Fetched data", NOT "Fetching data")
-- **payload**: Contextual data (no secrets/PII)
-- **traceback**: Required in error logs
+Code quality enforced via `ruff` and `pyright`. For detailed conventions (docstrings, naming, logging), load the `python-code-standards` skill.
 
 ---
 
@@ -139,6 +90,8 @@ uv sync --frozen      # CI/CD (deterministic)
 uv sync               # Local dev
 uv lock --upgrade     # Update dependencies
 ```
+
+For detailed procedures, decision trees, and troubleshooting, load the `dependency-management` skill.
 
 ---
 
@@ -174,10 +127,13 @@ Infrastructure and application code have different lifecycles — keep them sepa
 |------|--------------|---------|
 | `feat` | MINOR | `feat(pipeline): add deduplication` |
 | `fix` | PATCH | `fix(logging): correct DSN config` |
+| `perf` | PATCH | `perf(db): optimize query execution` |
 | `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `build` | None | `docs: update README` |
 | `!` or `BREAKING CHANGE:` | MAJOR | `feat(api)!: remove endpoint` |
 
 **Subject rules**: imperative mood, lowercase, no period, max 72 chars
+
+For commit message examples, PR conventions, and workspace version management, load the `semantic-release` skill.
 
 ### Branch Naming
 
@@ -186,6 +142,15 @@ Infrastructure and application code have different lifecycles — keep them sepa
 ```
 
 Example: `feat/DA-687-migrate-to-uv`
+
+### Pre-commit Hooks
+
+Pre-commit hooks MUST be installed before making any git commit. Before committing:
+
+1. Verify hooks are installed: `uv run pre-commit install`
+2. Never bypass hooks with `--no-verify`
+
+For standard configuration, hook descriptions, and troubleshooting, load the `pre-commit-hooks` skill.
 
 ---
 
@@ -196,13 +161,15 @@ Example: `feat/DA-687-migrate-to-uv`
 - Add deps to workspace root first, then project subset
 - Use `uv sync --frozen` in CI/CD
 - Commit `uv.lock` always
-- Use structured logging with past-tense events
 - Keep infrastructure in `infrastructure/` directory
+- Create bricks via `uv run poly create` CLI
+- Ensure pre-commit hooks are installed before committing
 
 ### Never Do This
 
 - Add project deps not in workspace root
 - Use `uv sync` without `--frozen` in CI/CD
 - Hardcode Python version in workflows (use `python-version-file`)
-- Log plain strings (`logging.info("message")`)
 - Mix infrastructure with application code in `projects/`
+- Create brick directories manually (always use poly CLI)
+- Bypass pre-commit hooks with `--no-verify`

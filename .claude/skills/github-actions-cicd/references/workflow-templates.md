@@ -49,9 +49,6 @@ jobs:
         with:
           version: "0.7.8"
 
-      - run: uv sync --frozen --group release
-      - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
-
       - name: "Authenticate to Google Cloud"
         uses: google-github-actions/auth@v3
         with:
@@ -62,7 +59,8 @@ jobs:
       - name: "Extract Pulumi version from lock file"
         id: extract-pulumi-version
         run: |
-          PULUMI_VERSION=$(grep -A 1 '^name = "pulumi"$' uv.lock | grep '^version = ' | head -1 | sed 's/version = "\(.*\)"/\1/')
+          PULUMI_VERSION=$(uv tree --package pulumi --depth 0 --frozen | sed 's/.* v//')
+          echo "Using Pulumi version: ${PULUMI_VERSION}"
           echo "PULUMI_VERSION=${PULUMI_VERSION}" >> $GITHUB_OUTPUT
 
       - uses: pulumi/actions@v6
@@ -82,6 +80,116 @@ jobs:
           stack-name: ${{ steps.determine-stack-version.outputs.STACK }}
           upsert: true
           refresh: true
+```
+
+## Deploy Cloud Run Function
+
+```yaml
+name: Deploy
+run-name: Deploy to ${{ github.event.inputs.environment || 'sandbox' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options:
+          - sandbox
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Configure version tag"
+        id: configure-version-tag
+        run: |
+          VERSION=${{ github.sha }}
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: "..."
+          service_account: "..."
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./projects/{function_name}/Dockerfile
+          push: true
+          tags: ${{ vars.IMAGE_URL }}:${{ steps.configure-version-tag.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Deploy Cloud Run Function"
+        run: |
+          cd infrastructure/cloudrun_function/{function_name}/overlays/${{ github.event.inputs.environment }}
+          kustomize edit set image IMAGE_URL=${{ vars.IMAGE_URL }}:${{ steps.configure-version-tag.outputs.VERSION }}
+          kustomize build . | sed "s|VERSION_PLACEHOLDER|${{ steps.configure-version-tag.outputs.VERSION }}|g" > /tmp/service.yaml
+          gcloud run services replace /tmp/service.yaml --region=${{ vars.REGION }}
+```
+
+## Deploy Cloud Run Service
+
+```yaml
+name: Deploy
+run-name: Deploy to ${{ github.event.inputs.environment || 'sandbox' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options:
+          - sandbox
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Configure version tag"
+        id: configure-version-tag
+        run: |
+          VERSION=${{ github.sha }}
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: "..."
+          service_account: "..."
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./projects/{service_name}/Dockerfile
+          push: true
+          tags: ${{ vars.IMAGE_URL }}:${{ steps.configure-version-tag.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "Deploy Cloud Run Service"
+        run: |
+          cd infrastructure/cloudrun_service/{service_name}/overlays/${{ github.event.inputs.environment }}
+          kustomize edit set image IMAGE_URL=${{ vars.IMAGE_URL }}:${{ steps.configure-version-tag.outputs.VERSION }}
+          kustomize build . | sed "s|VERSION_PLACEHOLDER|${{ steps.configure-version-tag.outputs.VERSION }}|g" > /tmp/service.yaml
+          gcloud run services replace /tmp/service.yaml --region=${{ vars.REGION }}
 ```
 
 ## Deploy Cloud Run Job
@@ -133,7 +241,7 @@ jobs:
 
       - name: "Deploy Cloud Run Job"
         run: |
-          cd infrastructure/cloudrunjob/{job_name}/overlays/${{ github.event.inputs.environment }}
+          cd infrastructure/cloudrun_job/{job_name}/overlays/${{ github.event.inputs.environment }}
           kustomize edit set image IMAGE_URL=${{ vars.IMAGE_URL }}:${{ steps.configure-version-tag.outputs.VERSION }}
           kustomize build . | sed "s|VERSION_PLACEHOLDER|${{ steps.configure-version-tag.outputs.VERSION }}|g" > /tmp/job.yaml
           gcloud run jobs replace /tmp/job.yaml --region=${{ vars.REGION }}

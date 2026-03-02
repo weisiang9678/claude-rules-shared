@@ -1,14 +1,10 @@
+---
+description: "Use when creating or modifying GitHub Actions workflows and CI/CD pipelines."
+---
+
 # GitHub Actions CI/CD
 
 Create and maintain GitHub Actions workflows following project standards.
-
-## Trigger
-
-Use this skill when the user asks to:
-- Create a GitHub Actions workflow
-- Set up CI/CD for a project
-- Fix workflow issues
-- Add new workflow jobs
 
 ## Standard Setup Pattern
 
@@ -35,6 +31,8 @@ steps:
   - name: "Activate virtualenv"
     run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 ```
+
+**Exception:** Pulumi workflows using `toolchain: uv` (see [pulumi-infrastructure skill](../pulumi-infrastructure/SKILL.md)) do not need the "Install dependencies" and "Activate virtualenv" steps — `pulumi install` handles this automatically.
 
 ## Key Rules
 
@@ -126,6 +124,18 @@ jobs:
           version: "0.7.8"
       - run: uv sync --frozen --group release
       - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
+
+      - name: "Sync workspace member versions"
+        run: |
+          NEW_VERSION=$(semantic-release --noop version --print)
+          if [ -n "$NEW_VERSION" ]; then
+            echo "Syncing workspace members to version: ${NEW_VERSION}"
+            for project in projects/*; do
+              uv version --package $(basename "$project") "$NEW_VERSION" --frozen
+            done
+          fi
+
+      - run: semantic-release version
       - run: semantic-release publish
 ```
 
@@ -156,6 +166,24 @@ Use `verb-subject` in kebab-case when steps have outputs:
   run: |
     echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 ```
+
+## Extracting Package Version from Lock File
+
+Use `uv tree` to get a package version from `uv.lock` (e.g., for Pulumi version pinning):
+
+```yaml
+- name: "Extract Pulumi version from lock file"
+  id: extract-pulumi-version
+  run: |
+    PULUMI_VERSION=$(uv tree --package pulumi --depth 0 --frozen | sed 's/.* v//')
+    echo "PULUMI_VERSION=${PULUMI_VERSION}" >> $GITHUB_OUTPUT
+    echo "Using Pulumi version: ${PULUMI_VERSION}"
+```
+
+This approach:
+- Uses uv's native TOML parsing (more robust than grep)
+- Uses `--frozen` to read from lock file without modification
+- Works without running `uv sync` first
 
 ## Reference Files
 
